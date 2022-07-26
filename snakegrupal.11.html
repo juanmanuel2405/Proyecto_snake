@@ -1,0 +1,588 @@
+<canvas id="canvas" width="1300" height="600"></canvas>
+<script src="web-lib/processing.js"></script>
+<script src="web-lib/functional-light.js"></script>
+<script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+<script>
+  // importamos la libreria sweeralert para poder modificar las alertas que aparecen en la pantalla 
+  /* esta funcion swal () permite mostrar un mensaje de alerta al iniciar el juego.
+  */
+  swal({
+    title: "BIENVENIDO A SNAKE !",
+    text: "Apresurate, dale click a la pantalla para mover la culebrita!",
+    icon: "success",
+    button: "Disfrutar del juego!",
+  });
+  //Vamos a usar http://processingjs.org/
+  // o https://p5js.org/reference/
+
+  // Importamos las librerias
+  let { append, cons, first, isEmpty, isList, length, rest } = functionalLight;
+
+  /*
+  * make : data (objeto), attribute (objeto, caracteristicas, caracter) => objeto 
+  *esta funcion permite crear un nuevo objeto con base en un objeto ya creado pero con nuevos atributos o caracteristicas
+  *function make (data, attribute) { cuerpo de la funcion }
+  */
+
+  function make(data, attribute) {
+    return Object.assign({}, data, attribute);
+  }
+
+  /*
+*sketchProc (processing) => world
+*En esta funcion se encuentra todo lo que se va a usar , es el universo del juego 
+ function sketchProc(processing) {cuerpo de la funcion}
+*/
+
+  function sketchProc(processing) {
+
+    /**
+    * Esto se llama antes de iniciar el juego, aqui se encuentra todo lo que se va a dibujar primero 
+    *como lo es el tamaño de canvas, la frecuencia con la que se recarga, el color del mismo , y objetos ya asignados
+    *como lo son la comida, la serpiente y sus caracteristicas 
+    */
+
+    processing.setup = function () {
+      processing.frameRate(10);
+      processing.size(1300, 600);
+      processing.background(15, 200, 50);
+      processing.state = {
+        aumento: 1,
+        rapidez: 10,
+        puntuacion: 0,
+        mejor_puntuacion: JSON.parse(window.localStorage.getItem('BEST')),
+        aparicionizq: 130,
+        aparicionder: 0,
+        color: { r: 5, g: 10, b: 240 },
+        direccion: "RIGHT",
+        grande: { x: Math.round(Math.random() * 120), y: Math.round(Math.random() * 50), ancho: 1, alto: 1 },
+        food: { x: Math.round(Math.random() * 120), y: Math.round(Math.random() * 50), ancho: 1, alto: 1 },
+        mySnake: [{ x: 12, y: 10, ancho: 1, alto: 1 }, { x: 11, y: 10, ancho: 1, alto: 1 }, { x: 10, y: 10, ancho: 1, alto: 1 }],
+        size: 10
+      };
+    }
+
+    /* contrato: world => world 
+    proposito :esta funcion permite mover la culebrita con las teclas designadas,para ello usamos un switch donde se evaluara la tecla
+      presionada por el usuario y esto cambiara la direccion de la culebrita.
+
+      */
+    function move(world) {
+      switch (world.direccion) {
+        case "RIGHT":
+          return make(world, { mySnake: ultimo(cons(make(first(world.mySnake), { x: first(world.mySnake).x + world.aumento }), world.mySnake)) });
+          break;
+        case "LEFT":
+          return make(world, { mySnake: ultimo(cons(make(first(world.mySnake), { x: first(world.mySnake).x - world.aumento }), world.mySnake)) });
+          break;
+        case "UP":
+          return make(world, { mySnake: ultimo(cons(make(first(world.mySnake), { y: first(world.mySnake).y - world.aumento }), world.mySnake)) });
+          break;
+        case "DOWN":
+          return make(world, { mySnake: ultimo(cons(make(first(world.mySnake), { y: first(world.mySnake).y + world.aumento }), world.mySnake)) })
+          break;
+
+        default:
+          console.log("error")
+      }
+    }
+
+
+    /*
+   * en Drawgame encontraremos lo que se va a dibujar como lo es, el contorno o los bordes, la culebrita y sus caracteristicas 
+   Dibuja algo en el canvas. Aqui se pone todo lo que quieras pintar
+   */
+
+    processing.drawGame = function (world) {
+      //color del fondo
+      processing.background(0, 0, 0);
+      processing.fill(240, 240, 240);
+       // esta funcion pinta el color de la culebrita
+      processing.fill(0, 240, 0);
+      //funcion que dibuja a la serpiente
+      dibujarSerpiente(world, world.mySnake)
+     
+     //funcion que pinta la pinta el color de la comida normal 
+      processing.fill(200,100,50)
+      //funcion que dibuja la comida normal en el mundo 
+      comida(world, world.food);
+      //funcion que pinta el color de la comida grande
+     processing.fill(50,240,50)
+      //funcion que dibuja la comida grande
+      comidaG(world,world.grande)
+    
+      processing.fill(0,240,0)
+     //funcion que dibuja el titulo 
+     drawTitle(world);
+      //esta funcion pinta el color del puntaje y mejor puntaje 
+     processing.fill(world.color.r, world.color.g, world.color.b)
+      //funcion que dibuja el score en el mundo  
+      drawscore(world);
+      //funcion que dibuja la mejor puntuacion
+      drawbestscore(world);
+      //esta funcion processing pinta los bordes.
+      processing.fill(Math.round(Math.random() * 240), Math.round(Math.random() * 240), Math.round(Math.random() * 240));
+      //estas funciones processing crea los bordes
+      processing.rect(0, 0, 10, 250),// izquierda
+        processing.rect(0, 350, 10, 250),//izquierda.abajo
+        processing.rect(10, 590, 1300, 10);//abajo
+      processing.rect(1290, 10, 10, 250);//derecha
+      processing.rect(1290, 350, 10, 250);//derecha.abajo
+      processing.rect(0, 0, 1300, 10);//arriba
+
+      // aqui se pintaran los obstaculos.
+      processing.fill(Math.round(Math.random() * 240), Math.round(Math.random() * 240), Math.round(Math.random() * 240));
+      processing.rect(300, 150, 20, 250);
+      processing.rect(650, 150, 20, 250)
+      processing.rect(1000, 150, 20, 250);
+    }
+
+    // con esta funcion dibujamos la cabeza de la serpiente.
+    function dibujarCabeza(world, mySnake) {
+      processing.rect(mySnake.x * world.size, mySnake.y * world.size, mySnake.ancho * world.size, mySnake.alto * world.size);
+    }
+ /*
+    * dibujarSerpiente : world (objeto ) => objeto 
+    *con esta funcion dibujamos el cuerpo de la serpiente.
+    * function dibbujarSerpiente(world,mysnake) { cuerpo de la funcion }
+    */
+  
+    function dibujarSerpiente(world, mySnake) {
+      if (isList(mySnake)) {
+        if (length(mySnake) == 1) {
+          dibujarCabeza(world, first(mySnake))
+          return;
+        }
+        dibujarCabeza(world, first(mySnake));
+        dibujarSerpiente(world, rest(mySnake));
+        return;
+      }
+      console.log("ERROR");
+    }
+
+    //con esta funcion drawfood dibujamos la comida.
+    function drawfood(world, food) {
+      processing.rect(food.x * world.size, food.y * world.size, food.ancho * world.size, food.alto * world.size)
+    }
+     // esta funcion pinta la comida.
+    function comida(world, food) {
+      drawfood(world, world.food);
+    }
+    
+    //con esta funcion dibujamos la comida 
+    function drawGrande(world,grande ){
+      processing.rect(grande.x * world.size, grande.y  * world.size, grande.ancho * world.size, grande.alto * world.size)
+    }
+    //esat funcion determina en que caso se pinta la comida 
+    function comidaG(world,grande){
+      if(world.food.x > 50 && world.food.x < 100 /*&& world.food.y > 25 && world.food.y < 40*/) {
+     return drawGrande(world, world.grande);
+    } else {
+      return console.log("ERROR")
+    }
+    }
+
+    function drawTitle(world){
+    processing.textSize(40)
+    processing.text("SNAKE GAME",1000,40)
+  }
+    //funcion que dibuja el score//
+    function drawscore(world) {
+      processing.textSize(30);
+      processing.text(world.puntuacion, 1225, 90)
+      processing.text("SCORE: ", 1100, 90)
+    }
+    //funcion que dibuja el mejor puntaje//
+    function drawbestscore(world){
+       processing.textSize(15);
+      processing.text(world.mejor_puntuacion, 1250, 60)
+      processing.text("BEST SCORE: ", 1100, 60)
+}
+
+    /*
+    * comer : world (objeto ) => objeto 
+    *esta funcion permite a la serpiente crecer cuando come.
+    *se ejecutara cada vez que la posicion de la cabeza de la serpiente se encuentre en la misma posicion que la de la comida.
+    * function comer(world) { cuerpo de la funcion }
+    */
+    function comer2(world){
+      switch (world.direccion) {
+        case "RIGHT":
+          return make(world, {
+            mySnake: cons(make(first(world.mySnake), { x: first(world.mySnake).x + world.aumento },cons(make(first(world.mySnake), { x: first(world.mySnake).x + world.aumento }), world.mySnake)) ,world.mySnake),
+            grande: { x: Math.round(Math.random() * 120), y: Math.round(Math.random() * 59), ancho: 1, alto: 1 },
+            rapidez: world.rapidez + 4, puntuacion: world.puntuacion + 20
+          });
+          break;
+
+        case "LEFT":
+          return make(world, {
+            mySnake: cons(make(first(world.mySnake), { x: first(world.mySnake).x-  world.aumento },cons(make(first(world.mySnake), { x: first(world.mySnake).x - world.aumento }), world.mySnake)),world.mySnake),
+            grande: { x: Math.round(Math.random() * 120), y: Math.round(Math.random() * 59), ancho: 1, alto: 1 },
+            rapidez: world.rapidez + 4, puntuacion: world.puntuacion + 20
+          });
+          break;
+        case "UP":
+          return make(world, {
+            mySnake: cons(make(first(world.mySnake), { y: first(world.mySnake).y - world.aumento },cons(make(first(world.mySnake), { y: first(world.mySnake).y - world.aumento }), world.mySnake)),world.mySnake),
+            grande: { x: Math.round(Math.random() * 120), y: Math.round(Math.random() * 59), ancho: 1, alto: 1 },
+            rapidez: world.rapidez + 4, puntuacion: world.puntuacion + 20
+          });
+          break;
+        case "DOWN":
+          return make(world, {
+            mySnake: cons(make(first(world.mySnake), { y: first(world.mySnake).y + world.aumento },cons(make(first(world.mySnake), { y: first(world.mySnake).y + world.aumento }), world.mySnake)),world.mySnake),
+            grande: { x: Math.round(Math.random() * 120), y: Math.round(Math.random() * 59), ancho: 1, alto: 1 },
+            rapidez: world.rapidez + 4, puntuacion: world.puntuacion + 20
+          });
+          break;
+        default:
+          console.log("error")
+      }
+    }
+
+    function comer(world) {
+      switch (world.direccion) {
+        case "RIGHT":
+          return make(world, {
+            mySnake: cons(make(first(world.mySnake), { x: first(world.mySnake).x + world.aumento }), world.mySnake),
+            color: { r: Math.round(Math.random() * 2400), g: Math.round(Math.random() * 240), b: Math.round(Math.random() * 200) },
+            food: { x: Math.round(Math.random() * 120), y: Math.round(Math.random() * 59), ancho: 1, alto: 1 },
+            rapidez: world.rapidez + 2, puntuacion: world.puntuacion + 10
+          });
+          break;
+
+        case "LEFT":
+          return make(world, {
+            mySnake: cons(make(first(world.mySnake), { x: first(world.mySnake).x - world.aumento }), world.mySnake),
+            food: { x: Math.round(Math.random() * 120), y: Math.round(Math.random() * 59), ancho: 1, alto: 1 },
+            rapidez: world.rapidez + 2, puntuacion: world.puntuacion + 10
+          });
+          break;
+        case "UP":
+          return make(world, {
+            mySnake: cons(make(first(world.mySnake), { y: first(world.mySnake).y - world.aumento }), world.mySnake),
+            food: { x: Math.round(Math.random() * 120), y: Math.round(Math.random() * 59), ancho: 1, alto: 1 },
+            rapidez: world.rapidez + 2, puntuacion: world.puntuacion + 10
+          });
+          break;
+        case "DOWN":
+          return make(world, {
+            mySnake: cons(make(first(world.mySnake), { y: first(world.mySnake).y + world.aumento }), world.mySnake),
+            food: { x: Math.round(Math.random() * 120), y: Math.round(Math.random() * 59), ancho: 1, alto: 1 },   
+            rapidez: world.rapidez + 2, puntuacion: world.puntuacion + 10
+          });
+          break;
+        default:
+          console.log("error")
+      }
+    }
+
+
+
+    // Esta es la función que pinta todo. Se ejecuta 60 veces por segundo. 
+    processing.draw = function () {
+      processing.drawGame(processing.state);
+      processing.state = processing.onTic(processing.state);
+     
+    };
+ 
+
+    /*
+    *world (objeto), keycode(number) => objeto
+    *esta funcion nos permitira cambiar la direccion de la serpiente de acuerdo a la tecla presionada por el usuario.
+    *processing.onKeyEvent = function (world, keycode) { cuerpo de la funcion }
+    */
+    processing.onKeyEvent = function (world, keycode) {
+      switch (keycode) {
+        case 38: // flecha arriba.
+          return make(world, { direccion: "UP" });
+          break;
+
+        case 40: // flecha abajo.
+          return make(world, { direccion: "DOWN" });
+          break;
+
+        case 39: // flecha derecha
+          return make(world, { direccion: "RIGHT" });
+          break;
+
+        case 37: // flecha izquierda
+          return make(world, { direccion: "LEFT" });
+          break;
+
+        default:
+          console.log(keycode);
+          return make(world, {});
+      }
+    }
+
+    /*
+    * Esta funcion pinta todo y verifica si la culebrita toca una zona de muerte que son los bordes , y los obstaculos 
+    * y da un aviso en caso de que haya perdido el cual le permite terminar el juego o volverlo a jugar 
+    * processing.onTic = function (world) { cuerpo de la funcion }
+    */
+    processing.onTic = function (world) {
+      processing.frameRate(world.rapidez);
+
+      // aqui verificaremos que la culebra pase por el espacio destinado para transportarse de derecha a izquierda.
+      if (first(world.mySnake).y > 25 && first(world.mySnake).y < 35
+        && first(world.mySnake).x == 130) {
+        return make(world, { mySnake: ultimo(cons(make(first(world.mySnake), { x: world.aparicionder + world.aumento }), world.mySnake)) });
+      } // aqui verificaremos que la culebra pase por el espacio destinado para transportarse de izquierda a derecha.
+      else
+        if (first(world.mySnake).y >= 25 && first(world.mySnake).y < 35 && first(world.mySnake).x == 0) {
+          return make(world, { mySnake: ultimo(cons(make(first(world.mySnake), { x: world.aparicionizq - world.aumento }), world.mySnake)) });
+        }
+        // aqui se verficará que la culebra se encuentre viva y además que la posicion de la cabeza sea igual a la de la comida.
+        else
+          if (first(world.mySnake).y > 0 && first(world.mySnake).y <= 59
+            && first(world.mySnake).x > 0 && first(world.mySnake).x <= 129 && !die(world) && world.food.x == first(world.mySnake).x
+            && world.food.y == first(world.mySnake).y) {
+            return comer(world);
+
+          } else 
+            if (first(world.mySnake).y > 0 && first(world.mySnake).y <= 59
+            && first(world.mySnake).x > 0 && first(world.mySnake).x <= 129 && !die(world) && world.grande.x == first(world.mySnake).x 
+            && world.grande.y == first(world.mySnake).y )  {
+            return comer2(world); 
+          /* aqui se verificara si la comida se esta pintando en los bordes o en los obstaculos y de ser asi se pintara de nuevo 
+            para que el usuario siempre pueda disfrutar del juego */
+            }else
+            if (first(world.mySnake).y > 0 && first(world.mySnake).y <= 59
+              && first(world.mySnake).x > 0 && first(world.mySnake).x <= 129 && !die(world)) {
+              if (world.food.x <= 0 || world.food.x == 30 || world.food.x == 31 || world.food.x == 100 || world.food.x == 101 ||
+                 world.food.x == 65 || world.food.x == 66 || world.food.x >= 129 || world.food.y <= 0 || world.food.y >= 59 ||
+                (world.food.x >= 100 && world.food.y <= 9)) {
+                return make(world, { food: { x: Math.round(Math.random() * 120), y: Math.round(Math.random() * 59), ancho: 1, alto: 1 } });
+              } // aqui se verificara si la culebra toca un obstaculo y si es asi morirá.
+              else
+
+                //primer obstaculo, esta funcion envia una señal en caso de que choque con el primer obstaculo y permite reiniciar el juego 
+
+                if ((first(world.mySnake).x == 30 || first(world.mySnake).x == 32) && first(world.mySnake).y >= 15 && first(world.mySnake).y < 40) {
+                  window.localStorage.setItem('BEST', JSON.stringify(world.puntuacion))
+                  // esta funcion crea la alerta de que perdiste
+                  return swal("¡Vaya! Perdiste, ¿ Quieres jugar de nuevo ?", "Tu puntaje es: " + world.puntuacion, {
+                    // en esta parte se crea los botones y los texto que tendran los botones 
+                    buttons: {
+                      cancel: "Sí, Quiero Jugar Nuevamente",
+                      catch: {
+                        text: " ¡ No Quiero Seguir jugando !",
+                        value: "No quiero",
+                      },
+                    },
+                  })
+                    .then((value) => {
+                      // con este switch se analizara los casos y se tomara una desicion con respecto al valor tomado 
+                      switch (value) {
+                        case "No quiero":
+                          swal("¿Quieres abandonar el juego?", "¿ESTÁS SEGURO ?", "warning", {
+                            buttons: {
+                              cancel: "Quiero seguir jugando",
+                              catch: {
+                                text: " ¡ Completamente Seguro !",
+                                value: "seguro"
+                              },
+                            }
+                          })
+                            .then((value) => {
+                              switch (value) {
+                                default:
+                                  // location.reload recarga la pagina 
+                                  location.reload();
+                                  break;
+                                case "seguro":
+                                  swal("VUELVE PRONTO")
+                              }
+                            });
+                          break;
+                        default:
+                          location.reload();
+                      }
+                    }
+                    )
+
+                  return;
+                }
+                else
+
+                  //segundo  obstaculo, esta funcion envia una señal en caso de que choque con el segundo obstaculo y permite reiniciar el juego 
+
+                  if ((first(world.mySnake).x == 65 || first(world.mySnake).x == 66) && first(world.mySnake).y >= 15 && first(world.mySnake).y < 40) {
+                    window.localStorage.setItem('BEST', JSON.stringify(world.puntuacion))
+                    return swal("¡Vaya! Perdiste, ¿ Quieres jugar de nuevo ?", "Tu puntaje es: " + world.puntuacion, {
+                      buttons: {
+                        cancel: "Sí, Quiero Jugar Nuevamente",
+                        catch: {
+                          text: " ¡ No Quiero Seguir jugando !",
+                          value: "No quiero",
+                        },
+                      },
+                    })
+                      .then((value) => {
+                        switch (value) {
+                          case "No quiero":
+                            swal("¿Quieres abandonar el juego?", "¿ESTÁS SEGURO ?", "warning", {
+                              buttons: {
+                                cancel: "Quiero seguir jugando",
+                                catch: {
+                                  text: " ¡ Completamente Seguro !",
+                                  value: "seguro"
+                                },
+                              }
+                            })
+                              .then((value) => {
+                                switch (value) {
+                                  default:
+                                    location.reload();
+                                    break;
+                                  case "seguro":
+                                    swal("VUELVE PRONTO")
+                                }
+                              });
+                            break;
+                          default:
+                            location.reload();
+                        }
+                      }
+                      )
+                    return;
+                  }
+                  else
+
+                    //tercer obstaculo, esta funcion envia una señal en caso de que choque con el tercer obstaculo y permite reiniciar el juego 
+
+                    if ((first(world.mySnake).x == 100 || first(world.mySnake).x == 101) && first(world.mySnake).y >= 15 && first(world.mySnake).y < 40) {
+                      window.localStorage.setItem('BEST', JSON.stringify(world.puntuacion))
+                      return swal("¡Vaya! Perdiste, ¿ Quieres jugar de nuevo ?", "Tu puntaje es: " + world.puntuacion, {
+                        buttons: {
+                          cancel: "Sí, Quiero Jugar Nuevamente",
+                          catch: {
+                            text: " ¡ No Quiero Seguir jugando !",
+                            value: "No quiero",
+                          },
+                        },
+                      })
+                        .then((value) => {
+                          switch (value) {
+                            case "No quiero":
+                              swal("¿Quieres abandonar el juego?", "¿ESTÁS SEGURO ?", "warning", {
+                                buttons: {
+                                  cancel: "Quiero seguir jugando",
+                                  catch: {
+                                    text: " ¡ Completamente Seguro !",
+                                    value: "seguro"
+                                  },
+                                }
+                              })
+                                .then((value) => {
+                                  switch (value) {
+                                    default:
+                                      location.reload();
+                                      break;
+                                    case "seguro":
+                                      swal("VUELVE PRONTO")
+                                  }
+                                });
+                              break;
+                            default:
+                              location.reload();
+                          }
+                        }
+                        )
+
+                      return;
+                    }
+
+              return move(world);
+            }
+      //bordes, esta funcion envia una señal en caso de que choque con los bordes del juego y permite reiniciar el juego 
+      return swal("¡Vaya! Perdiste, ¿ Quieres jugar de nuevo ?", "Tu puntaje es: " + world.puntuacion, {
+        buttons: {
+          cancel: "Sí, Quiero Jugar Nuevamente",
+          catch: {
+            text: " ¡ No Quiero Seguir jugando !",
+            value: "No quiero",
+          },
+        },
+      })
+        .then((value) => {
+          switch (value) {
+            case "No quiero":
+              swal("¿Quieres abandonar el juego?", "¿ESTÁS SEGURO ?", "warning", {
+                buttons: {
+                  cancel: "Quiero seguir jugando",
+                  catch: {
+                    text: " ¡ Completamente Seguro !",
+                    value: "seguro"
+                  },
+                }
+              })
+                .then((value) => {
+                  switch (value) {
+                    default:
+                      location.reload();
+                      break;
+                    case "seguro":
+                      swal("VUELVE PRONTO")
+                  }
+                });
+              break;
+            default:
+              location.reload();
+          }
+        }
+        )
+      return;
+    }
+
+
+
+
+
+    // funciones auxiliares. 
+
+    /*
+    *ultimo (lista) = > lista
+    *esta función nos permitira eliminar el ultimo elemento que se pinta de la serpiente para generar la ilusion de movimiento.
+    *function ultimo(lista) { cuerpo de la funcion }
+    */
+
+    // esta función nos permitira eliminar el ultimo elemento que se pinta de la serpiente para generar la ilusion de movimiento.
+    function ultimo(lista) {
+      if (length(lista) == 1) {
+        return [];
+      } else {
+        return cons(first(lista), ultimo(rest(lista)))
+      }
+    }
+
+    /* 
+    *funcion que define la muerte de la serpiente al tocarse ella misma
+    *function itself(cabeza,cuerpo){cuerpo de la funcion}
+    */
+    function die(world) {
+      return itself(first(world.mySnake), rest(world.mySnake));
+    }
+
+    function itself(cabeza, cuerpo) {
+      if (!isEmpty(cuerpo)) {
+        if (cabeza.x == first(cuerpo).x && cabeza.y == first(cuerpo).y) {
+          return true;
+        }
+        return itself(cabeza, rest(cuerpo));
+      }
+      return false;
+    }
+
+    // Esta función se ejecuta cada vez que presionamos una tecla. 
+  processing.keyPressed =function (){
+    processing.state = processing.onKeyEvent(processing.state, processing.keyCode);
+   }
+  }
+  var canvas = document.getElementById("canvas");
+  
+  // Adjuntamos nuestro sketch al framework de processing
+  var processingInstance = new Processing(canvas, sketchProc);
+</script>
